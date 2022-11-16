@@ -1,7 +1,6 @@
 #include "debug.h"
 #include "fs.h"
 #include "heap.h"
-#include "net.h"
 #include "render.h"
 #include "frogger_game.h"
 #include "timer.h"
