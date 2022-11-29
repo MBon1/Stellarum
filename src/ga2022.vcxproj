@@ -191,6 +191,9 @@
     <ClInclude Include="fs.h" />
     <ClInclude Include="gpu.h" />
     <ClInclude Include="heap.h" />
+    <ClInclude Include="json-c\config.h" />
+    <ClInclude Include="json-c\json.h" />
+    <ClInclude Include="json-c\json_config.h" />
     <ClInclude Include="stack.h" />
     <ClInclude Include="stack_trace.h" />
     <ClInclude Include="lz4\lz4.h" />
