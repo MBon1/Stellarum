@@ -34,6 +34,18 @@ k_key_map[] =
 	{ .virtual_key = VK_RIGHT, .ga_key = k_key_right, },
 	{ .virtual_key = VK_UP, .ga_key = k_key_up, },
 	{ .virtual_key = VK_DOWN, .ga_key = k_key_down, },
+	{ .virtual_key = 48, .ga_key = k_key_0, },
+	{ .virtual_key = 49, .ga_key = k_key_1, },
+	{ .virtual_key = 50, .ga_key = k_key_2, },
+	{ .virtual_key = 51, .ga_key = k_key_3, },
+	{ .virtual_key = 52, .ga_key = k_key_4, },
+	{ .virtual_key = 53, .ga_key = k_key_5, },
+	{ .virtual_key = 54, .ga_key = k_key_6, },
+	{ .virtual_key = 55, .ga_key = k_key_7, },
+	{ .virtual_key = 56, .ga_key = k_key_8, },
+	{ .virtual_key = 57, .ga_key = k_key_9, },
+	{ .virtual_key = VK_CONTROL, .ga_key = k_key_ctrl, },
+	{ .virtual_key = VK_DELETE, .ga_key = k_key_delete, },
 };
 
 static LRESULT CALLBACK _window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

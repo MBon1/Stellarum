@@ -27,6 +27,18 @@ enum
 	k_key_down = 1 << 1,
 	k_key_left = 1 << 2,
 	k_key_right = 1 << 3,
+	k_key_0 = 1 << 4,
+	k_key_1 = 1 << 5,
+	k_key_2 = 1 << 6,
+	k_key_3 = 1 << 7,
+	k_key_4 = 1 << 8,
+	k_key_5 = 1 << 9,
+	k_key_6 = 1 << 10,
+	k_key_7 = 1 << 11,
+	k_key_8 = 1 << 12,
+	k_key_9 = 1 << 13,
+	k_key_ctrl = 1 << 14,
+	k_key_delete = 1 << 15,
 };
 
 

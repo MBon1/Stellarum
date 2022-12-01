@@ -87,6 +87,9 @@ static void reset_player_position(transform_component_t* player_transform_comp);
 static void spawn_player(frogger_game_t* game, int index);
 static void spawn_traffic(frogger_game_t* game, bool is_truck, bool move_right, int index, float horizontal_pos, float vertical_pos);
 static void spawn_camera(frogger_game_t* game);
+
+static void update_save(frogger_game_t* game);
+
 static void update_players(frogger_game_t* game);
 static void spawn_all_traffic(frogger_game_t* game);
 static void update_traffic(frogger_game_t* game);
@@ -131,6 +134,9 @@ void frogger_game_update(frogger_game_t* game)
 {
 	timer_object_update(game->timer);
 	ecs_update(game->ecs);
+
+	update_save(game);
+
 	update_players(game);
 	update_traffic(game);
 	update_player_traffic_collision(game);
@@ -336,6 +342,78 @@ static void spawn_camera(frogger_game_t* game)
 	vec3f_t up = vec3f_up();
 	mat4f_make_lookat(&camera_comp->view, &eye_pos, &forward, &up);
 }
+
+#include <stdio.h>
+static void update_save(frogger_game_t* game)
+{
+	// Need a way to only take input on press (not while down)
+
+	uint32_t key_mask = wm_get_key_mask(game->window);
+	
+	int save_file_id;
+
+	if (key_mask & k_key_0)
+	{
+		save_file_id = 0;
+	}
+	else if (key_mask & k_key_1)
+	{
+		save_file_id = 1;
+	}
+	else if (key_mask & k_key_2)
+	{
+		save_file_id = 2;
+	}
+	else if (key_mask & k_key_3)
+	{
+		save_file_id = 3;
+	}
+	else if (key_mask & k_key_4)
+	{
+		save_file_id = 4;
+	}
+	else if (key_mask & k_key_5)
+	{
+		save_file_id = 5;
+	}
+	else if (key_mask & k_key_6)
+	{
+		save_file_id = 6;
+	}
+	else if (key_mask & k_key_7)
+	{
+		save_file_id = 7;
+	}
+	else if (key_mask & k_key_8)
+	{
+		save_file_id = 8;
+	}
+	else if (key_mask & k_key_9)
+	{
+		save_file_id = 9;
+	}
+	else
+	{
+		save_file_id = -1;
+	}
+
+	if (save_file_id > -1)
+	{
+		if (key_mask & k_key_ctrl)
+		{
+			printf("Loading save file %d\n", save_file_id);
+		}
+		else if (key_mask & k_key_delete)
+		{
+			printf("Deleting save file %d\n", save_file_id);
+		}
+		else
+		{
+			printf("Saving to save file %d\n", save_file_id);
+		}
+	}
+}
+
 
 static void update_players(frogger_game_t* game)
 {
