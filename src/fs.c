@@ -185,6 +185,17 @@ void fs_work_destroy(fs_work_t* work)
 	}
 }
 
+void fs_work_and_buffer_destroy(fs_work_t* work)
+{
+	if (work)
+	{
+		event_wait(work->done);
+		heap_free(work->heap, work->buffer);
+		event_destroy(work->done);
+		heap_free(work->heap, work);
+	}
+}
+
 static void file_read(fs_t* fs, fs_work_t* work)
 {
 	wchar_t wide_path[1024];

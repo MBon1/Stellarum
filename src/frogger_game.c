@@ -347,6 +347,7 @@ static void spawn_camera(frogger_game_t* game)
 static void update_save(frogger_game_t* game)
 {
 	// Need a way to only take input on press (not while down)
+	// Record last frame's key mask. check if it is the same as this one (numeric keys, ctrl, delete), if so, do not preform save/read/delete
 
 	uint32_t key_mask = wm_get_key_mask(game->window);
 	

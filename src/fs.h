@@ -58,3 +58,6 @@ size_t fs_work_get_size(fs_work_t* work);
 
 // Free a file work object.
 void fs_work_destroy(fs_work_t* work);
+
+// Free a file work object and its buffer.
+void fs_work_and_buffer_destroy(fs_work_t* work);
