@@ -54,10 +54,48 @@ int main(int argc, const char* argv[])
 void save_sys_test(heap_t* heap, fs_t* fs)
 {
 	save_sys_t* save_sys = save_sys_create(heap, fs);
+
+	/* READ SAVE DATA */
 	save_sys_read_save(save_sys, 1);
 	printf("RESULT: \n%s\n\n", save_sys_get_jobj_string(save_sys));
-	json_object* res = json_object_object_get(save_sys_get_jobj(save_sys), "foo");
+	json_object* res = save_sys_get_component_jobj(save_sys, "foo");
 	//printf("Value of \'foo\': %s", json_object_get_string(res));
-	printf("Value of \'foo\': %d", json_object_get_int(res));
+	printf("Value of \'foo\': %d\n", json_object_get_int(res));
+
+	res = save_sys_get_component_jobj(save_sys, "foo1");
+	if (res == NULL)
+	{
+		printf("\'foo1\' is an invalid key\n");
+	}
+
+	/* WRITE TO SAVE FILE */
+	// Valid JSON Parse Test
+	static const char* input_json_str = "{ "
+		"\"bas\": [\"bar\", \"baz\"], "
+		"\"foo\": 0"
+		"}";
+	if (save_sys_write_save(save_sys, 2, input_json_str) == 0)
+	{
+		printf("Valid json; writing to file\n");
+	}
+	else
+	{
+		printf("Invalid json; skipping\n");
+	}
+
+	// Invalid JSON Parse Test
+	static const char* invalid_input_json_str = "{ "
+		"\"bas\": [\"bar\", \"baz\"], "
+		"\"foo\": 0";
+	if (save_sys_write_save(save_sys, 2, invalid_input_json_str) == 0)
+	{
+		printf("Valid json; writing to file\n");
+	}
+	else
+	{
+		printf("Invalid json; skipping\n");
+	}
+
+
 	save_sys_destroy(save_sys);
 }

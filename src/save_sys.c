@@ -19,7 +19,7 @@ typedef struct save_sys_t
 } save_sys_t;
 
 
-static char* set_file_name(save_sys_t* save_sys, unsigned int save_id);
+static char* save_sys_get_file_name(save_sys_t* save_sys, unsigned int save_id);
 
 
 save_sys_t* save_sys_create(heap_t* heap, fs_t* fs)
@@ -47,10 +47,27 @@ const char* save_sys_get_jobj_string(save_sys_t* save_sys)
 	return json_object_to_json_string_ext(save_sys->jobj, JSON_C_TO_STRING_PRETTY);
 }
 
-
-void save_sys_write_save(save_sys_t* save_sys, unsigned int save_id, char* save_data)
+json_object* save_sys_get_component_jobj(save_sys_t* save_sys, const char* field)
 {
-	return;
+	return json_object_object_get(save_sys_get_jobj(save_sys), field);
+}
+
+
+int save_sys_write_save(save_sys_t* save_sys, unsigned int save_id, const char* save_data)
+{
+	json_object* jobj = json_tokener_parse(save_data);
+	if (jobj == NULL)
+	{
+		return -1;
+	}
+	save_sys->jobj = jobj;
+	char* file_name = save_sys_get_file_name(save_sys, save_id);
+	//fs_write_clear(save_sys->fs, file_name, save_data, strlen(save_data), false, true);
+	fs_work_t* work = fs_write(save_sys->fs, file_name, save_data, strlen(save_data), false);
+	fs_work_wait(work);
+	fs_work_destroy(work);
+	heap_free(save_sys->heap, file_name);
+	return 0;
 }
 
 #include <stdio.h>
@@ -58,7 +75,7 @@ void save_sys_read_save(save_sys_t* save_sys, unsigned int save_id)
 {
 	printf("\nREAD SAVE\n");
 
-	char* file_name = set_file_name(save_sys, save_id);
+	char* file_name = save_sys_get_file_name(save_sys, save_id);
 	fs_work_t* work = fs_read(save_sys->fs, file_name, save_sys->heap, true, false);
 	fs_work_wait(work);
 	save_sys->jobj = json_tokener_parse((char*)(fs_work_get_buffer(work)));
@@ -73,7 +90,7 @@ void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id)
 }
 
 
-static char* set_file_name(save_sys_t* save_sys, unsigned int save_id)
+static char* save_sys_get_file_name(save_sys_t* save_sys, unsigned int save_id)
 {
 	char* file_name = heap_alloc(save_sys->heap, SAVE_FILE_NAME_LEN, 8);
 	sprintf_s(file_name, (size_t)(SAVE_FILE_NAME_LEN), "%s%u%s", SAVE_FILE_NAME, save_id, SAVE_FILE_EXTENSION);
