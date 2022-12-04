@@ -97,5 +97,21 @@ void save_sys_test(heap_t* heap, fs_t* fs)
 	}
 
 
+	/* DELETE SAVE FILE */
+	// Create a file then delete it
+	if (save_sys_write_save(save_sys, 3, input_json_str) == 0)
+	{
+		printf("Valid json; writing to file\n");
+	}
+	else
+	{
+		printf("Invalid json; skipping\n");
+	}
+	save_sys_delete_save(save_sys, 3);
+
+	// Attempt to delete a non-existant file
+	save_sys_delete_save(save_sys, 0);
+
+
 	save_sys_destroy(save_sys);
 }

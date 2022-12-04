@@ -6,6 +6,7 @@
 #include "tlsf/tlsf.h"
 
 #include <string.h>
+#include <stdio.h>
 
 #define SAVE_FILE_NAME "save"
 #define SAVE_FILE_EXTENSION ".json"
@@ -70,23 +71,23 @@ int save_sys_write_save(save_sys_t* save_sys, unsigned int save_id, const char* 
 	return 0;
 }
 
-#include <stdio.h>
 void save_sys_read_save(save_sys_t* save_sys, unsigned int save_id)
 {
-	printf("\nREAD SAVE\n");
-
 	char* file_name = save_sys_get_file_name(save_sys, save_id);
 	fs_work_t* work = fs_read(save_sys->fs, file_name, save_sys->heap, true, false);
 	fs_work_wait(work);
 	save_sys->jobj = json_tokener_parse((char*)(fs_work_get_buffer(work)));
 	fs_work_and_buffer_destroy(work);
 	heap_free(save_sys->heap, file_name);
-	return;
 }
 
 void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id)
 {
-
+	char* file_name = save_sys_get_file_name(save_sys, save_id);
+	fs_work_t* work = fs_delete(save_sys->fs, file_name);
+	fs_work_wait(work);
+	fs_work_destroy(work);
+	heap_free(save_sys->heap, file_name);
 }
 
 

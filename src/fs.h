@@ -40,6 +40,11 @@ fs_work_t* fs_write(fs_t* fs, const char* path, const void* buffer, size_t size,
 // Returns a work object.
 fs_work_t* fs_write_clear(fs_t* fs, const char* path, const void* buffer, size_t size, bool clear_file, bool destroy_on_completion);
 
+// Queue a file delete.
+// File at the specified path will be deleted.
+// Returns a work object.
+fs_work_t* fs_delete(fs_t* fs, const char* path);
+
 // If true, the file work is complete.
 bool fs_work_is_done(fs_work_t* work);
 
