@@ -356,7 +356,7 @@ static const char* write_save(void* game)
 
 	const char* input_json_str = "{ "
 		"\"bas\": [\"bar\", \"baz\"], "
-		"\"foo\": 0"
+		"\"foo\": 20"
 		"}";
 	return input_json_str;
 }
@@ -378,6 +378,7 @@ static void load_save(void* game, save_sys_t* save_sys)
 		printf("\'foo1\' is an invalid key\n");
 	}
 
+	res = save_sys_get_component_jobj(save_sys, "foo");
 	printf("SAVE LOADED; \"foo\" = %d\n", json_object_get_int(res));
 }
 
