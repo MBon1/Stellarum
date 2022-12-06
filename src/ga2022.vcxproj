@@ -164,6 +164,7 @@
     <ClCompile Include="lz4\lz4.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="save_sys.c" />
+    <ClCompile Include="save_sys_sample_game.c" />
     <ClCompile Include="stack.c" />
     <ClCompile Include="stack_trace.c" />
     <ClCompile Include="mat4f.c" />
@@ -220,6 +221,7 @@
     <ClInclude Include="json-c\vasprintf_compat.h" />
     <ClInclude Include="json_test.h" />
     <ClInclude Include="save_sys.h" />
+    <ClInclude Include="save_sys_sample_game.h" />
     <ClInclude Include="stack.h" />
     <ClInclude Include="stack_trace.h" />
     <ClInclude Include="lz4\lz4.h" />

@@ -2,7 +2,9 @@
 #include "fs.h"
 #include "gpu.h"
 #include "heap.h"
+#include "json-c/json.h"
 #include "render.h"
+#include "save_sys.h"
 #include "timer_object.h"
 #include "transform.h"
 #include "wm.h"
@@ -52,7 +54,7 @@ typedef struct name_component_t
 	char name[32];
 } name_component_t;
 
-typedef struct frogger_game_t
+typedef struct save_sys_sample_game_t
 {
 	heap_t* heap;
 	fs_t* fs;
@@ -60,6 +62,7 @@ typedef struct frogger_game_t
 	render_t* render;
 
 	timer_object_t* timer;
+	save_sys_t* save_sys;
 
 	ecs_t* ecs;
 	int transform_type;
@@ -79,29 +82,33 @@ typedef struct frogger_game_t
 	fs_work_t* vertex_shader_work;
 	fs_work_t* traffic_fragment_shader_work;
 	fs_work_t* player_fragment_shader_work;
-} frogger_game_t;
+} save_sys_sample_game_t;
 
-static void load_resources(frogger_game_t* game);
-static void unload_resources(frogger_game_t* game);
+static void load_resources(save_sys_sample_game_t* game);
+static void unload_resources(save_sys_sample_game_t* game);
 static void reset_player_position(transform_component_t* player_transform_comp);
-static void spawn_player(frogger_game_t* game, int index);
-static void spawn_traffic(frogger_game_t* game, bool is_truck, bool move_right, int index, float horizontal_pos, float vertical_pos);
-static void spawn_camera(frogger_game_t* game);
-static void update_players(frogger_game_t* game);
-static void spawn_all_traffic(frogger_game_t* game);
-static void update_traffic(frogger_game_t* game);
-static void update_player_traffic_collision(frogger_game_t* game);
-static void draw_models(frogger_game_t* game);
+static void spawn_player(save_sys_sample_game_t* game, int index);
+static void spawn_traffic(save_sys_sample_game_t* game, bool is_truck, bool move_right, int index, float horizontal_pos, float vertical_pos);
+static void spawn_camera(save_sys_sample_game_t* game);
 
-frogger_game_t* frogger_game_create(heap_t* heap, fs_t* fs, wm_window_t* window, render_t* render)
+static void update_save(save_sys_sample_game_t* game);
+
+static void update_players(save_sys_sample_game_t* game);
+static void spawn_all_traffic(save_sys_sample_game_t* game);
+static void update_traffic(save_sys_sample_game_t* game);
+static void update_player_traffic_collision(save_sys_sample_game_t* game);
+static void draw_models(save_sys_sample_game_t* game);
+
+save_sys_sample_game_t* save_sys_sample_game_create(heap_t* heap, fs_t* fs, wm_window_t* window, render_t* render)
 {
-	frogger_game_t* game = heap_alloc(heap, sizeof(frogger_game_t), 8);
+	save_sys_sample_game_t* game = heap_alloc(heap, sizeof(save_sys_sample_game_t), 8);
 	game->heap = heap;
 	game->fs = fs;
 	game->window = window;
 	game->render = render;
 
 	game->timer = timer_object_create(heap, NULL);
+	game->save_sys = save_sys_create(heap, fs);
 
 	game->ecs = ecs_create(heap);
 	game->transform_type = ecs_register_component_type(game->ecs, "transform", sizeof(transform_component_t), _Alignof(transform_component_t));
@@ -119,18 +126,22 @@ frogger_game_t* frogger_game_create(heap_t* heap, fs_t* fs, wm_window_t* window,
 	return game;
 }
 
-void frogger_game_destroy(frogger_game_t* game)
+void save_sys_sample_game_destroy(save_sys_sample_game_t* game)
 {
 	ecs_destroy(game->ecs);
 	timer_object_destroy(game->timer);
+	save_sys_destroy(game->save_sys);
 	unload_resources(game);
 	heap_free(game->heap, game);
 }
 
-void frogger_game_update(frogger_game_t* game)
+void save_sys_sample_game_update(save_sys_sample_game_t* game)
 {
 	timer_object_update(game->timer);
 	ecs_update(game->ecs);
+
+	update_save(game);
+
 	update_players(game);
 	update_traffic(game);
 	update_player_traffic_collision(game);
@@ -138,7 +149,7 @@ void frogger_game_update(frogger_game_t* game)
 	render_push_done(game->render);
 }
 
-static void load_resources(frogger_game_t* game)
+static void load_resources(save_sys_sample_game_t* game)
 {
 	game->vertex_shader_work = fs_read(game->fs, "shaders/triangle.vert.spv", game->heap, false, false);
 	game->traffic_fragment_shader_work = fs_read(game->fs, "shaders/frogger_traffic.frag.spv", game->heap, false, false);
@@ -218,7 +229,7 @@ static void load_resources(frogger_game_t* game)
 	};
 }
 
-static void unload_resources(frogger_game_t* game)
+static void unload_resources(save_sys_sample_game_t* game)
 {
 	heap_free(game->heap, fs_work_get_buffer(game->traffic_fragment_shader_work));
 	heap_free(game->heap, fs_work_get_buffer(game->player_fragment_shader_work));
@@ -235,7 +246,7 @@ static void reset_player_position(transform_component_t* player_transform_comp)
 	player_transform_comp->transform.translation.z = VERTICAL_CLAMP;
 }
 
-static void spawn_player(frogger_game_t* game, int index)
+static void spawn_player(save_sys_sample_game_t* game, int index)
 {
 	uint64_t k_player_ent_mask =
 		(1ULL << game->transform_type) |
@@ -258,7 +269,7 @@ static void spawn_player(frogger_game_t* game, int index)
 	model_comp->shader_info = &game->player_shader;
 }
 
-static void spawn_all_traffic(frogger_game_t* game)
+static void spawn_all_traffic(save_sys_sample_game_t* game)
 {
 	int index = 0;
 	for (int i = 0; i < 6; i++)
@@ -280,7 +291,7 @@ static void spawn_all_traffic(frogger_game_t* game)
 	}
 }
 
-static void spawn_traffic(frogger_game_t* game, bool is_truck, bool move_right, int index, float horizontal_pos, float vertical_pos)
+static void spawn_traffic(save_sys_sample_game_t* game, bool is_truck, bool move_right, int index, float horizontal_pos, float vertical_pos)
 {
 	uint64_t k_traffic_ent_mask =
 		(1ULL << game->transform_type) |
@@ -315,7 +326,7 @@ static void spawn_traffic(frogger_game_t* game, bool is_truck, bool move_right, 
 	model_comp->shader_info = &game->traffic_shader;
 }
 
-static void spawn_camera(frogger_game_t* game)
+static void spawn_camera(save_sys_sample_game_t* game)
 {
 	uint64_t k_camera_ent_mask =
 		(1ULL << game->camera_type) |
@@ -337,7 +348,47 @@ static void spawn_camera(frogger_game_t* game)
 	mat4f_make_lookat(&camera_comp->view, &eye_pos, &forward, &up);
 }
 
-static void update_players(frogger_game_t* game)
+#include <stdio.h>
+
+static const char* write_save(void* game)
+{
+	save_sys_sample_game_t* save_sys_sample_game = (save_sys_sample_game_t*)game;
+
+	const char* input_json_str = "{ "
+		"\"bas\": [\"bar\", \"baz\"], "
+		"\"foo\": 20"
+		"}";
+	return input_json_str;
+}
+
+static void load_save(void* game, save_sys_t* save_sys)
+{
+	save_sys_sample_game_t* save_sys_sample_game = (save_sys_sample_game_t*)game;
+
+	json_object* jobj = save_sys_get_jobj(save_sys);
+	if (jobj == NULL)
+	{
+		printf("INVALID SAVE\n");
+		return;
+	}
+
+	json_object* res = save_sys_get_component_jobj(save_sys, "fo2o");
+	if (res == NULL)
+	{
+		printf("\'foo1\' is an invalid key\n");
+	}
+
+	res = save_sys_get_component_jobj(save_sys, "foo");
+	printf("SAVE LOADED; \"foo\" = %d\n", json_object_get_int(res));
+}
+
+static void update_save(save_sys_sample_game_t* game)
+{
+	save_sys_update(game, game->save_sys, game->window, write_save, load_save);
+}
+
+
+static void update_players(save_sys_sample_game_t* game)
 {
 	float dt = (float)timer_object_get_delta_ms(game->timer) * 0.0075f;
 
@@ -392,7 +443,7 @@ static void update_players(frogger_game_t* game)
 	}
 }
 
-static void update_traffic(frogger_game_t* game)
+static void update_traffic(save_sys_sample_game_t* game)
 {
 	float dt = (float)timer_object_get_delta_ms(game->timer) * 0.005f;
 
@@ -439,7 +490,7 @@ static void update_traffic(frogger_game_t* game)
 	}
 }
 
-static void update_player_traffic_collision(frogger_game_t* game)
+static void update_player_traffic_collision(save_sys_sample_game_t* game)
 {
 	uint64_t k_player_query_mask = (1ULL << game->transform_type) | (1ULL << game->player_type);
 	uint64_t k_traffic_query_mask = (1ULL << game->transform_type) | (1ULL << game->traffic_type);
@@ -527,7 +578,7 @@ static void update_player_traffic_collision(frogger_game_t* game)
 	}
 }
 
-static void draw_models(frogger_game_t* game)
+static void draw_models(save_sys_sample_game_t* game)
 {
 	uint64_t k_camera_query_mask = (1ULL << game->camera_type);
 	for (ecs_query_t camera_query = ecs_query_create(game->ecs, k_camera_query_mask);
