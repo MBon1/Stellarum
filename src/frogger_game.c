@@ -350,8 +350,10 @@ static void spawn_camera(frogger_game_t* game)
 
 #include <stdio.h>
 
-static const char* write_save()
+static const char* write_save(void* game)
 {
+	frogger_game_t* frogger_game = (frogger_game_t*)game;
+
 	const char* input_json_str = "{ "
 		"\"bas\": [\"bar\", \"baz\"], "
 		"\"foo\": 0"
@@ -359,8 +361,10 @@ static const char* write_save()
 	return input_json_str;
 }
 
-static void load_save(save_sys_t* save_sys)
+static void load_save(void* game, save_sys_t* save_sys)
 {
+	frogger_game_t* frogger_game = (frogger_game_t*)game;
+
 	json_object* jobj = save_sys_get_jobj(save_sys);
 	if (jobj == NULL)
 	{
@@ -368,7 +372,7 @@ static void load_save(save_sys_t* save_sys)
 		return;
 	}
 
-	json_object* res = save_sys_get_component_jobj(save_sys, "foo");
+	json_object* res = save_sys_get_component_jobj(save_sys, "fo2o");
 	if (res == NULL)
 	{
 		printf("\'foo1\' is an invalid key\n");
@@ -379,7 +383,7 @@ static void load_save(save_sys_t* save_sys)
 
 static void update_save(frogger_game_t* game)
 {
-	save_sys_update(game->save_sys, game->window, write_save, load_save);
+	save_sys_update(game, game->save_sys, game->window, write_save, load_save);
 }
 
 

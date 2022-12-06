@@ -102,7 +102,7 @@ void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id)
 }
 
 
-void save_sys_update(save_sys_t* save_sys, wm_window_t* game_window, const char* (*game_write_save)(), void (*game_load_save)(save_sys_t* save_sys))
+void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window, const char* (*game_write_save)(void* game), void (*game_load_save)(void* game, save_sys_t* save_sys))
 {
 	uint32_t key_mask = wm_get_key_mask(game_window);
 	int last_save_file_id = save_sys->last_file_id;
@@ -165,7 +165,7 @@ void save_sys_update(save_sys_t* save_sys, wm_window_t* game_window, const char*
 		{
 			printf("Loading save file %d\n", save_file_id);
 			save_sys_read_save(save_sys, (unsigned int)(save_file_id));
-			game_load_save(save_sys);
+			game_load_save(game, save_sys);
 		}
 		else if (key_mask & k_key_delete)
 		{
@@ -174,7 +174,7 @@ void save_sys_update(save_sys_t* save_sys, wm_window_t* game_window, const char*
 		}
 		else
 		{
-			const char* save_file_content = game_write_save();
+			const char* save_file_content = game_write_save(game);
 			printf("Saving to save file %d\n%s\n", save_file_id, save_file_content);
 			save_sys_write_save(save_sys, (unsigned int)(save_file_id), save_file_content);
 		}
