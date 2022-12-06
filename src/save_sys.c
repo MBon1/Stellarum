@@ -4,6 +4,7 @@
 #include "heap.h"
 #include "json-c/json.h"
 #include "tlsf/tlsf.h"
+#include "wm.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -17,10 +18,8 @@ typedef struct save_sys_t
 	heap_t* heap;
 	fs_t* fs;
 	json_object* jobj;
+	int last_file_id;
 } save_sys_t;
-
-
-static char* save_sys_get_file_name(save_sys_t* save_sys, unsigned int save_id);
 
 
 save_sys_t* save_sys_create(heap_t* heap, fs_t* fs)
@@ -29,6 +28,7 @@ save_sys_t* save_sys_create(heap_t* heap, fs_t* fs)
 	save_sys->heap = heap;
 	save_sys->fs = fs;
 	save_sys->jobj = NULL;
+	save_sys->last_file_id = -1;
 	return save_sys;
 }
 
@@ -53,6 +53,13 @@ json_object* save_sys_get_component_jobj(save_sys_t* save_sys, const char* field
 	return json_object_object_get(save_sys_get_jobj(save_sys), field);
 }
 
+
+static char* save_sys_get_file_name(save_sys_t* save_sys, unsigned int save_id)
+{
+	char* file_name = heap_alloc(save_sys->heap, SAVE_FILE_NAME_LEN, 8);
+	sprintf_s(file_name, (size_t)(SAVE_FILE_NAME_LEN), "%s%u%s", SAVE_FILE_NAME, save_id, SAVE_FILE_EXTENSION);
+	return file_name;
+}
 
 int save_sys_write_save(save_sys_t* save_sys, unsigned int save_id, const char* save_data)
 {
@@ -91,9 +98,79 @@ void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id)
 }
 
 
-static char* save_sys_get_file_name(save_sys_t* save_sys, unsigned int save_id)
+void save_sys_update(save_sys_t* save_sys, wm_window_t* game_window, const char* (*game_write_save)(), void (*game_load_save)())
 {
-	char* file_name = heap_alloc(save_sys->heap, SAVE_FILE_NAME_LEN, 8);
-	sprintf_s(file_name, (size_t)(SAVE_FILE_NAME_LEN), "%s%u%s", SAVE_FILE_NAME, save_id, SAVE_FILE_EXTENSION);
-	return file_name;
+	uint32_t key_mask = wm_get_key_mask(game_window);
+	int last_save_file_id = save_sys->last_file_id;
+
+	int save_file_id;
+	if (key_mask & k_key_0)
+	{
+		save_file_id = 0;
+	}
+	else if (key_mask & k_key_1)
+	{
+		save_file_id = 1;
+	}
+	else if (key_mask & k_key_2)
+	{
+		save_file_id = 2;
+	}
+	else if (key_mask & k_key_3)
+	{
+		save_file_id = 3;
+	}
+	else if (key_mask & k_key_4)
+	{
+		save_file_id = 4;
+	}
+	else if (key_mask & k_key_5)
+	{
+		save_file_id = 5;
+	}
+	else if (key_mask & k_key_6)
+	{
+		save_file_id = 6;
+	}
+	else if (key_mask & k_key_7)
+	{
+		save_file_id = 7;
+	}
+	else if (key_mask & k_key_8)
+	{
+		save_file_id = 8;
+	}
+	else if (key_mask & k_key_9)
+	{
+		save_file_id = 9;
+	}
+	else
+	{
+		save_file_id = -1;
+	}
+
+	// Only register inputs if the number key is different
+	if (save_file_id == last_save_file_id)
+	{
+		return;
+	}
+
+	if (save_file_id > -1)
+	{
+		if (key_mask & k_key_ctrl)
+		{
+			printf("Loading save file %d\n", save_file_id);
+			game_load_save();
+		}
+		else if (key_mask & k_key_delete)
+		{
+			printf("Deleting save file %d\n", save_file_id);
+		}
+		else
+		{
+			const char* save_file_content = game_write_save();
+			printf("Saving to save file %d\n%s\n", save_file_id, save_file_content);
+		}
+	}
+	save_sys->last_file_id = save_file_id;
 }

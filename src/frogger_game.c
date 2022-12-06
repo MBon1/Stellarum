@@ -3,6 +3,7 @@
 #include "gpu.h"
 #include "heap.h"
 #include "render.h"
+#include "save_sys.h"
 #include "timer_object.h"
 #include "transform.h"
 #include "wm.h"
@@ -60,6 +61,7 @@ typedef struct frogger_game_t
 	render_t* render;
 
 	timer_object_t* timer;
+	save_sys_t* save_sys;
 
 	ecs_t* ecs;
 	int transform_type;
@@ -105,6 +107,7 @@ frogger_game_t* frogger_game_create(heap_t* heap, fs_t* fs, wm_window_t* window,
 	game->render = render;
 
 	game->timer = timer_object_create(heap, NULL);
+	game->save_sys = save_sys_create(heap, fs);
 
 	game->ecs = ecs_create(heap);
 	game->transform_type = ecs_register_component_type(game->ecs, "transform", sizeof(transform_component_t), _Alignof(transform_component_t));
@@ -126,6 +129,7 @@ void frogger_game_destroy(frogger_game_t* game)
 {
 	ecs_destroy(game->ecs);
 	timer_object_destroy(game->timer);
+	save_sys_destroy(game->save_sys);
 	unload_resources(game);
 	heap_free(game->heap, game);
 }
@@ -344,75 +348,32 @@ static void spawn_camera(frogger_game_t* game)
 }
 
 #include <stdio.h>
+
+static const char* write_save()
+{
+	char* input_json_str = "{ "
+		"'foo': ['bar', 'baz'], "
+		"'': 0, "
+		"'a/b': 1, "
+		"'c%d': 2, "
+		"'e^f': 3, "
+		"'g|h': 4, "
+		"'i\\\\j': 5, "
+		"'k\\\"l': 6, "
+		"' ': 7, "
+		"'m~n': 8 "
+		"}";
+	return input_json_str;
+}
+
+static void load_save()
+{
+	printf("SAVE LOADED\n");
+}
+
 static void update_save(frogger_game_t* game)
 {
-	// Need a way to only take input on press (not while down)
-	// Record last frame's key mask. check if it is the same as this one (numeric keys, ctrl, delete), if so, do not preform save/read/delete
-
-	uint32_t key_mask = wm_get_key_mask(game->window);
-	
-	int save_file_id;
-
-	if (key_mask & k_key_0)
-	{
-		save_file_id = 0;
-	}
-	else if (key_mask & k_key_1)
-	{
-		save_file_id = 1;
-	}
-	else if (key_mask & k_key_2)
-	{
-		save_file_id = 2;
-	}
-	else if (key_mask & k_key_3)
-	{
-		save_file_id = 3;
-	}
-	else if (key_mask & k_key_4)
-	{
-		save_file_id = 4;
-	}
-	else if (key_mask & k_key_5)
-	{
-		save_file_id = 5;
-	}
-	else if (key_mask & k_key_6)
-	{
-		save_file_id = 6;
-	}
-	else if (key_mask & k_key_7)
-	{
-		save_file_id = 7;
-	}
-	else if (key_mask & k_key_8)
-	{
-		save_file_id = 8;
-	}
-	else if (key_mask & k_key_9)
-	{
-		save_file_id = 9;
-	}
-	else
-	{
-		save_file_id = -1;
-	}
-
-	if (save_file_id > -1)
-	{
-		if (key_mask & k_key_ctrl)
-		{
-			printf("Loading save file %d\n", save_file_id);
-		}
-		else if (key_mask & k_key_delete)
-		{
-			printf("Deleting save file %d\n", save_file_id);
-		}
-		else
-		{
-			printf("Saving to save file %d\n", save_file_id);
-		}
-	}
+	save_sys_update(game->save_sys, game->window, write_save, load_save);
 }
 
 
