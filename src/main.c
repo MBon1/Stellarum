@@ -23,9 +23,6 @@ int main(int argc, const char* argv[])
 	wm_window_t* window = wm_create(heap);
 	render_t* render = render_create(heap, window);
 
-	// JSON Test
-	json_test();
-
 	// SAVE SYS TEST
 	save_sys_test(heap, fs);
 

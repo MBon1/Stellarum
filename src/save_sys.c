@@ -83,7 +83,11 @@ void save_sys_read_save(save_sys_t* save_sys, unsigned int save_id)
 	char* file_name = save_sys_get_file_name(save_sys, save_id);
 	fs_work_t* work = fs_read(save_sys->fs, file_name, save_sys->heap, true, false);
 	fs_work_wait(work);
-	save_sys->jobj = json_tokener_parse((char*)(fs_work_get_buffer(work)));
+	// Check if the buffer is not empty
+	if (fs_work_get_buffer(work) != NULL)
+	{
+		save_sys->jobj = json_tokener_parse((char*)(fs_work_get_buffer(work)));
+	}
 	fs_work_and_buffer_destroy(work);
 	heap_free(save_sys->heap, file_name);
 }
@@ -98,7 +102,7 @@ void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id)
 }
 
 
-void save_sys_update(save_sys_t* save_sys, wm_window_t* game_window, const char* (*game_write_save)(), void (*game_load_save)())
+void save_sys_update(save_sys_t* save_sys, wm_window_t* game_window, const char* (*game_write_save)(), void (*game_load_save)(save_sys_t* save_sys))
 {
 	uint32_t key_mask = wm_get_key_mask(game_window);
 	int last_save_file_id = save_sys->last_file_id;
@@ -160,16 +164,19 @@ void save_sys_update(save_sys_t* save_sys, wm_window_t* game_window, const char*
 		if (key_mask & k_key_ctrl)
 		{
 			printf("Loading save file %d\n", save_file_id);
-			game_load_save();
+			save_sys_read_save(save_sys, (unsigned int)(save_file_id));
+			game_load_save(save_sys);
 		}
 		else if (key_mask & k_key_delete)
 		{
 			printf("Deleting save file %d\n", save_file_id);
+			save_sys_delete_save(save_sys, (unsigned int)(save_file_id));
 		}
 		else
 		{
 			const char* save_file_content = game_write_save();
 			printf("Saving to save file %d\n%s\n", save_file_id, save_file_content);
+			save_sys_write_save(save_sys, (unsigned int)(save_file_id), save_file_content);
 		}
 	}
 	save_sys->last_file_id = save_file_id;

@@ -25,6 +25,6 @@ void save_sys_read_save(save_sys_t* save_sys, unsigned int save_id);
 
 void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id);
 
-void save_sys_update(save_sys_t* save_sys, wm_window_t* game_window, const char* (*game_write_save)(), void (*game_load_save)());
+void save_sys_update(save_sys_t* save_sys, wm_window_t* game_window, const char* (*game_write_save)(), void (*game_load_save)(save_sys_t* save_sys));
 
 //void save_sys_update(save_sys_t* save_sys, wm_window_t* window);

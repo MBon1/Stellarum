@@ -2,6 +2,7 @@
 #include "fs.h"
 #include "gpu.h"
 #include "heap.h"
+#include "json-c/json.h"
 #include "render.h"
 #include "save_sys.h"
 #include "timer_object.h"
@@ -351,24 +352,29 @@ static void spawn_camera(frogger_game_t* game)
 
 static const char* write_save()
 {
-	char* input_json_str = "{ "
-		"'foo': ['bar', 'baz'], "
-		"'': 0, "
-		"'a/b': 1, "
-		"'c%d': 2, "
-		"'e^f': 3, "
-		"'g|h': 4, "
-		"'i\\\\j': 5, "
-		"'k\\\"l': 6, "
-		"' ': 7, "
-		"'m~n': 8 "
+	const char* input_json_str = "{ "
+		"\"bas\": [\"bar\", \"baz\"], "
+		"\"foo\": 0"
 		"}";
 	return input_json_str;
 }
 
-static void load_save()
+static void load_save(save_sys_t* save_sys)
 {
-	printf("SAVE LOADED\n");
+	json_object* jobj = save_sys_get_jobj(save_sys);
+	if (jobj == NULL)
+	{
+		printf("INVALID SAVE\n");
+		return;
+	}
+
+	json_object* res = save_sys_get_component_jobj(save_sys, "foo");
+	if (res == NULL)
+	{
+		printf("\'foo1\' is an invalid key\n");
+	}
+
+	printf("SAVE LOADED; \"foo\" = %d\n", json_object_get_int(res));
 }
 
 static void update_save(frogger_game_t* game)
