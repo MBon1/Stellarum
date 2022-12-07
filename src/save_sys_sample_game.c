@@ -21,6 +21,9 @@
 #define VERTICAL_CLAMP 4.5f
 #define HORIZONTAL_CLAMP 8.4f
 
+#define MAX_NAME_LEN 32
+#define MAX_DIGITS_INT 10
+
 typedef struct transform_component_t
 {
 	transform_t transform;
@@ -52,7 +55,7 @@ typedef struct traffic_component_t
 
 typedef struct name_component_t
 {
-	char name[32];
+	char name[MAX_NAME_LEN];
 } name_component_t;
 
 typedef struct marker_component_t
@@ -101,6 +104,8 @@ static void spawn_traffic(save_sys_sample_game_t* game, bool is_truck, bool move
 static void spawn_marker(save_sys_sample_game_t* game, int index, transform_component_t* transform);
 static void spawn_camera(save_sys_sample_game_t* game);
 
+static void record_players(save_sys_sample_game_t* game, json_object* save_sys_jobj);
+static void record_traffic(save_sys_sample_game_t* game, json_object* save_sys_jobj);
 static void update_save(save_sys_sample_game_t* game);
 
 static void update_players(save_sys_sample_game_t* game);
@@ -272,49 +277,7 @@ static void unload_resources(save_sys_sample_game_t* game)
 }
 
 
-
-
-#include <stdio.h>
-
-static const char* write_save(void* game)
-{
-	save_sys_sample_game_t* save_sys_sample_game = (save_sys_sample_game_t*)game;
-
-	const char* input_json_str = "{ "
-		"\"bas\": [\"bar\", \"baz\"], "
-		"\"foo\": 20"
-		"}";
-	return input_json_str;
-}
-
-static void load_save(void* game, save_sys_t* save_sys)
-{
-	save_sys_sample_game_t* save_sys_sample_game = (save_sys_sample_game_t*)game;
-
-	json_object* jobj = save_sys_get_jobj(save_sys);
-	if (jobj == NULL)
-	{
-		printf("INVALID SAVE\n");
-		return;
-	}
-
-	json_object* res = save_sys_get_component_jobj(save_sys, "fo2o");
-	if (res == NULL)
-	{
-		printf("\'foo1\' is an invalid key\n");
-	}
-
-	res = save_sys_get_component_jobj(save_sys, "foo");
-	printf("SAVE LOADED; \"foo\" = %d\n", json_object_get_int(res));
-}
-
-static void update_save(save_sys_sample_game_t* game)
-{
-	save_sys_update(game, game->save_sys, game->window, write_save, load_save);
-}
-
-
-
+/* ENTITY SPAWN FUNCTIONS */
 
 static void reset_player_position(transform_component_t* player_transform_comp)
 {
@@ -449,6 +412,147 @@ static void spawn_camera(save_sys_sample_game_t* game)
 	vec3f_t up = vec3f_up();
 	mat4f_make_lookat(&camera_comp->view, &eye_pos, &forward, &up);
 }
+
+
+/* SAVE SYSTEM FUNCTIONS */
+
+#include <stdio.h>
+
+
+static void write_save(void* game, save_sys_t* save_sys)
+{
+	json_object* save_sys_jobj = save_sys_get_jobj(save_sys);
+
+	save_sys_sample_game_t* s_game = (save_sys_sample_game_t*)game;
+
+	record_players(s_game, save_sys_jobj);
+	record_traffic(s_game, save_sys_jobj);
+}
+
+static void load_save(void* game, save_sys_t* save_sys)
+{
+	save_sys_sample_game_t* s_game = (save_sys_sample_game_t*)game;
+
+	json_object* jobj = save_sys_get_jobj(save_sys);
+	if (jobj == NULL)
+	{
+		printf("INVALID SAVE\n");
+		return;
+	}
+
+	ecs_destroy(s_game->ecs);
+	s_game->ecs = ecs_create(s_game->heap);
+
+	json_object* res = save_sys_get_component_jobj(save_sys, "fo2o");
+	if (res == NULL)
+	{
+		printf("\'foo1\' is an invalid key\n");
+	}
+
+	res = save_sys_get_component_jobj(save_sys, "foo");
+	printf("SAVE LOADED; \"foo\" = %d\n", json_object_get_int(res));
+}
+
+static void update_save(save_sys_sample_game_t* game)
+{
+	save_sys_update(game, game->save_sys, game->window, write_save, load_save);
+}
+
+static json_object* record_transform_component(transform_component_t* transform_comp)
+{
+	json_object* transform_array = json_object_new_array();
+	json_object_array_add(transform_array, json_object_new_double((double)transform_comp->transform.translation.x));
+	json_object_array_add(transform_array, json_object_new_double((double)transform_comp->transform.translation.y));
+	json_object_array_add(transform_array, json_object_new_double((double)transform_comp->transform.translation.z));
+	return transform_array;
+}
+
+static json_object* record_player_component(heap_t* heap, player_component_t* player_comp)
+{
+	static const char* player_json_format = "{ "
+		"\"index\": %d"
+		"}";
+
+	size_t input_json_str_len = strlen(player_json_format) + MAX_DIGITS_INT;
+	char* input_json_str = heap_alloc(heap, input_json_str_len, 8);
+	sprintf_s(input_json_str, input_json_str_len, player_json_format, player_comp->index);
+	json_object* traffic_jobj = save_sys_parse_string(input_json_str);
+	heap_free(heap, input_json_str);
+	return traffic_jobj;
+}
+
+static json_object* record_traffic_component(heap_t* heap, traffic_component_t* traffic_comp)
+{
+	char* traffic_json_format = "{ "
+		"\"is_truck\": %d, "
+		"\"move_right\": %d,"
+		"\"index\": %d"
+		"}";
+
+	size_t input_json_str_len = strlen(traffic_json_format) + MAX_DIGITS_INT + 2;
+	char* input_json_str = heap_alloc(heap, input_json_str_len, 8);
+	sprintf_s(input_json_str, input_json_str_len, traffic_json_format, traffic_comp->is_truck, traffic_comp->move_right, traffic_comp->index);
+	json_object* traffic_jobj = save_sys_parse_string(input_json_str);
+	heap_free(heap, input_json_str);
+	return traffic_jobj;
+}
+
+static void record_players(save_sys_sample_game_t* game, json_object* save_sys_jobj)
+{
+	uint64_t k_query_mask = (1ULL << game->player_type);
+
+	char* player_str = "player";
+	size_t player_name_len = strlen(player_str) + MAX_DIGITS_INT;
+	char* player_name = heap_alloc(game->heap, strlen(player_str) + MAX_DIGITS_INT, 8);
+	for (ecs_query_t query = ecs_query_create(game->ecs, k_query_mask);
+		ecs_query_is_valid(game->ecs, &query);
+		ecs_query_next(game->ecs, &query))
+	{
+		transform_component_t* transform_comp = ecs_query_get_component(game->ecs, &query, game->transform_type);
+		player_component_t* player_comp = ecs_query_get_component(game->ecs, &query, game->player_type);
+
+		json_object* player_jobj = json_object_new_object();
+		json_object* component_jobj = record_transform_component(transform_comp);
+		json_object_object_add(player_jobj, "transform", component_jobj);
+		component_jobj = record_player_component(game->heap, player_comp);
+		json_object_object_add(player_jobj, "player", component_jobj);
+
+		sprintf_s(player_name, player_name_len, "%s%d", player_str, player_comp->index);
+
+		json_object_object_add(save_sys_jobj, player_name, player_jobj);
+	}
+	heap_free(game->heap, player_name);
+}
+
+static void record_traffic(save_sys_sample_game_t* game, json_object* save_sys_jobj)
+{
+	uint64_t k_query_mask = (1ULL << game->transform_type);
+
+	char* traffic_str = "traffic";
+	size_t traffic_name_len = strlen(traffic_str) + MAX_DIGITS_INT;
+	char* traffic_name = heap_alloc(game->heap, strlen(traffic_str) + MAX_DIGITS_INT, 8);
+	for (ecs_query_t query = ecs_query_create(game->ecs, k_query_mask);
+		ecs_query_is_valid(game->ecs, &query);
+		ecs_query_next(game->ecs, &query))
+	{
+		transform_component_t* transform_comp = ecs_query_get_component(game->ecs, &query, game->transform_type);
+		traffic_component_t* traffic_comp = ecs_query_get_component(game->ecs, &query, game->traffic_type);
+
+		json_object* traffic_jobj = json_object_new_object();
+		json_object* component_jobj = record_transform_component(transform_comp);
+		json_object_object_add(traffic_jobj, "transform", component_jobj);
+		component_jobj = record_traffic_component(game->heap, traffic_comp);
+		json_object_object_add(traffic_jobj, "traffic", component_jobj);
+
+		sprintf_s(traffic_name, traffic_name_len, "%s%d", traffic_str, traffic_comp->index);
+
+		json_object_object_add(save_sys_jobj, traffic_name, traffic_jobj);
+	}
+	heap_free(game->heap, traffic_name);
+}
+
+
+/* UPDATE FUNCTIONS */
 
 static void update_players(save_sys_sample_game_t* game)
 {

@@ -102,7 +102,7 @@ void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id)
 }
 
 
-void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window, const char* (*game_write_save)(void* game), void (*game_load_save)(void* game, save_sys_t* save_sys))
+void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window, void (*game_write_save)(void* game, save_sys_t* save_sys), void (*game_load_save)(void* game, save_sys_t* save_sys))
 {
 	uint32_t key_mask = wm_get_key_mask(game_window);
 	int last_save_file_id = save_sys->last_file_id;
@@ -174,10 +174,22 @@ void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window,
 		}
 		else
 		{
-			const char* save_file_content = game_write_save(game);
+			save_sys->jobj = json_object_new_object();
+			game_write_save(game, save_sys);
+			const char* save_file_content = save_sys_get_jobj_string(save_sys);
 			printf("Saving to save file %d\n%s\n", save_file_id, save_file_content);
 			save_sys_write_save(save_sys, (unsigned int)(save_file_id), save_file_content);
 		}
 	}
 	save_sys->last_file_id = save_file_id;
+}
+
+json_object* save_sys_parse_string(const char* string)
+{
+	json_object* jobj = json_tokener_parse(string);
+	if (jobj == NULL)
+	{
+		return NULL;
+	}
+	return jobj;
 }
