@@ -16,6 +16,7 @@
 
 #define RECT_HORIZONTAL_LEN 1.0f
 #define CUBE_EDGE_LEN 0.5f
+#define MARKER_EDGE_LEN 0.25f
 
 #define VERTICAL_CLAMP 4.5f
 #define HORIZONTAL_CLAMP 8.4f
@@ -54,6 +55,11 @@ typedef struct name_component_t
 	char name[32];
 } name_component_t;
 
+typedef struct marker_component_t
+{
+	int index;
+} marker_component_t;
+
 typedef struct save_sys_sample_game_t
 {
 	heap_t* heap;
@@ -71,12 +77,15 @@ typedef struct save_sys_sample_game_t
 	int player_type;
 	int name_type;
 	int traffic_type;
+	int marker_type;
 	ecs_entity_ref_t player_ent;
 	ecs_entity_ref_t camera_ent;
 	ecs_entity_ref_t traffic_ent;
+	ecs_entity_ref_t marker_ent;
 
 	gpu_mesh_info_t rect_mesh;
 	gpu_mesh_info_t cube_mesh;
+	gpu_mesh_info_t marker_mesh;
 	gpu_shader_info_t player_shader;
 	gpu_shader_info_t traffic_shader;
 	fs_work_t* vertex_shader_work;
@@ -89,6 +98,7 @@ static void unload_resources(save_sys_sample_game_t* game);
 static void reset_player_position(transform_component_t* player_transform_comp);
 static void spawn_player(save_sys_sample_game_t* game, int index);
 static void spawn_traffic(save_sys_sample_game_t* game, bool is_truck, bool move_right, int index, float horizontal_pos, float vertical_pos);
+static void spawn_marker(save_sys_sample_game_t* game, int index, transform_component_t* transform);
 static void spawn_camera(save_sys_sample_game_t* game);
 
 static void update_save(save_sys_sample_game_t* game);
@@ -117,6 +127,7 @@ save_sys_sample_game_t* save_sys_sample_game_create(heap_t* heap, fs_t* fs, wm_w
 	game->player_type = ecs_register_component_type(game->ecs, "player", sizeof(player_component_t), _Alignof(player_component_t));
 	game->name_type = ecs_register_component_type(game->ecs, "name", sizeof(name_component_t), _Alignof(name_component_t));
 	game->traffic_type = ecs_register_component_type(game->ecs, "traffic", sizeof(traffic_component_t), _Alignof(traffic_component_t));
+	game->marker_type = ecs_register_component_type(game->ecs, "marker", sizeof(marker_component_t), _Alignof(marker_component_t));
 
 	load_resources(game);
 	spawn_player(game, 0);
@@ -140,11 +151,12 @@ void save_sys_sample_game_update(save_sys_sample_game_t* game)
 	timer_object_update(game->timer);
 	ecs_update(game->ecs);
 
+	update_players(game);
+	//update_traffic(game);
+	update_player_traffic_collision(game);
+
 	update_save(game);
 
-	update_players(game);
-	update_traffic(game);
-	update_player_traffic_collision(game);
 	draw_models(game);
 	render_push_done(game->render);
 }
@@ -227,6 +239,26 @@ static void load_resources(save_sys_sample_game_t* game)
 		.index_data = cube_indices,
 		.index_data_size = sizeof(cube_indices),
 	};
+
+	static vec3f_t marker_verts[] =
+	{
+		{ -1.0f, -MARKER_EDGE_LEN,  MARKER_EDGE_LEN }, { 0.0f, MARKER_EDGE_LEN,  MARKER_EDGE_LEN },
+		{  1.0f, -MARKER_EDGE_LEN,  MARKER_EDGE_LEN }, { 1.0f, 0.0f,  MARKER_EDGE_LEN },
+		{  1.0f,  MARKER_EDGE_LEN,  MARKER_EDGE_LEN }, { 1.0f, MARKER_EDGE_LEN,  0.0f },
+		{ -1.0f,  MARKER_EDGE_LEN,  MARKER_EDGE_LEN }, { 1.0f, 0.0f,  0.0f },
+		{ -1.0f, -MARKER_EDGE_LEN, -MARKER_EDGE_LEN }, { 0.0f, MARKER_EDGE_LEN,  0.0f },
+		{  1.0f, -MARKER_EDGE_LEN, -MARKER_EDGE_LEN }, { 0.0f, 0.0f,  MARKER_EDGE_LEN },
+		{  1.0f,  MARKER_EDGE_LEN, -MARKER_EDGE_LEN }, { 1.0f, MARKER_EDGE_LEN,  MARKER_EDGE_LEN },
+		{ -1.0f,  MARKER_EDGE_LEN, -MARKER_EDGE_LEN }, { 0.0f, 0.0f,  0.0f },
+	};
+	game->marker_mesh = (gpu_mesh_info_t)
+	{
+		.layout = k_gpu_mesh_layout_tri_p444_c444_i2,
+		.vertex_data = marker_verts,
+		.vertex_data_size = sizeof(marker_verts),
+		.index_data = cube_indices,
+		.index_data_size = sizeof(cube_indices),
+	};
 }
 
 static void unload_resources(save_sys_sample_game_t* game)
@@ -238,6 +270,51 @@ static void unload_resources(save_sys_sample_game_t* game)
 	fs_work_destroy(game->player_fragment_shader_work);
 	fs_work_destroy(game->vertex_shader_work);
 }
+
+
+
+
+#include <stdio.h>
+
+static const char* write_save(void* game)
+{
+	save_sys_sample_game_t* save_sys_sample_game = (save_sys_sample_game_t*)game;
+
+	const char* input_json_str = "{ "
+		"\"bas\": [\"bar\", \"baz\"], "
+		"\"foo\": 20"
+		"}";
+	return input_json_str;
+}
+
+static void load_save(void* game, save_sys_t* save_sys)
+{
+	save_sys_sample_game_t* save_sys_sample_game = (save_sys_sample_game_t*)game;
+
+	json_object* jobj = save_sys_get_jobj(save_sys);
+	if (jobj == NULL)
+	{
+		printf("INVALID SAVE\n");
+		return;
+	}
+
+	json_object* res = save_sys_get_component_jobj(save_sys, "fo2o");
+	if (res == NULL)
+	{
+		printf("\'foo1\' is an invalid key\n");
+	}
+
+	res = save_sys_get_component_jobj(save_sys, "foo");
+	printf("SAVE LOADED; \"foo\" = %d\n", json_object_get_int(res));
+}
+
+static void update_save(save_sys_sample_game_t* game)
+{
+	save_sys_update(game, game->save_sys, game->window, write_save, load_save);
+}
+
+
+
 
 static void reset_player_position(transform_component_t* player_transform_comp)
 {
@@ -269,6 +346,31 @@ static void spawn_player(save_sys_sample_game_t* game, int index)
 	model_comp->shader_info = &game->player_shader;
 }
 
+static void spawn_marker(save_sys_sample_game_t* game, int index, transform_component_t* transform)
+{
+	uint64_t k_marker_ent_mask =
+		(1ULL << game->transform_type) |
+		(1ULL << game->model_type) |
+		(1ULL << game->name_type) |
+		(1ULL << game->marker_type);
+	game->marker_ent = ecs_entity_add(game->ecs, k_marker_ent_mask);
+
+	transform_component_t* transform_comp = ecs_entity_get_component(game->ecs, game->marker_ent, game->transform_type, true);
+	transform_identity(&transform_comp->transform);
+	transform_comp->transform.translation.y = transform->transform.translation.y;
+	transform_comp->transform.translation.z = transform->transform.translation.z;
+
+	name_component_t* name_comp = ecs_entity_get_component(game->ecs, game->marker_ent, game->name_type, true);
+	strcpy_s(name_comp->name, sizeof(name_comp->name), "marker");
+
+	marker_component_t* marker_comp = ecs_entity_get_component(game->ecs, game->marker_ent, game->marker_type, true);
+	marker_comp->index = index;
+
+	model_component_t* model_comp = ecs_entity_get_component(game->ecs, game->marker_ent, game->model_type, true);
+	model_comp->mesh_info = &game->marker_mesh;
+	model_comp->shader_info = &game->player_shader;
+}
+
 static void spawn_all_traffic(save_sys_sample_game_t* game)
 {
 	int index = 0;
@@ -280,7 +382,7 @@ static void spawn_all_traffic(save_sys_sample_game_t* game)
 
 	for (int i = 0; i < 4; i++)
 	{
-		spawn_traffic(game, true, false, index, HORIZONTAL_CLAMP - (RECT_HORIZONTAL_LEN * 2) - (i * 5 * RECT_HORIZONTAL_LEN), 0);
+		spawn_traffic(game, true, false, index, HORIZONTAL_CLAMP - (RECT_HORIZONTAL_LEN)-(i * 5 * RECT_HORIZONTAL_LEN), 0);
 		index++;
 	}
 
@@ -347,46 +449,6 @@ static void spawn_camera(save_sys_sample_game_t* game)
 	vec3f_t up = vec3f_up();
 	mat4f_make_lookat(&camera_comp->view, &eye_pos, &forward, &up);
 }
-
-#include <stdio.h>
-
-static const char* write_save(void* game)
-{
-	save_sys_sample_game_t* save_sys_sample_game = (save_sys_sample_game_t*)game;
-
-	const char* input_json_str = "{ "
-		"\"bas\": [\"bar\", \"baz\"], "
-		"\"foo\": 20"
-		"}";
-	return input_json_str;
-}
-
-static void load_save(void* game, save_sys_t* save_sys)
-{
-	save_sys_sample_game_t* save_sys_sample_game = (save_sys_sample_game_t*)game;
-
-	json_object* jobj = save_sys_get_jobj(save_sys);
-	if (jobj == NULL)
-	{
-		printf("INVALID SAVE\n");
-		return;
-	}
-
-	json_object* res = save_sys_get_component_jobj(save_sys, "fo2o");
-	if (res == NULL)
-	{
-		printf("\'foo1\' is an invalid key\n");
-	}
-
-	res = save_sys_get_component_jobj(save_sys, "foo");
-	printf("SAVE LOADED; \"foo\" = %d\n", json_object_get_int(res));
-}
-
-static void update_save(save_sys_sample_game_t* game)
-{
-	save_sys_update(game, game->save_sys, game->window, write_save, load_save);
-}
-
 
 static void update_players(save_sys_sample_game_t* game)
 {
@@ -571,7 +633,8 @@ static void update_player_traffic_collision(save_sys_sample_game_t* game)
 				{
 					continue;
 				}
-				reset_player_position(transform_comp);
+				spawn_marker(game, traffic_comp->index, traffic_transform_comp);
+				ecs_entity_remove(game->ecs, ecs_query_get_entity(game->ecs, &collision_query), false);
 				break;
 			}
 		}
