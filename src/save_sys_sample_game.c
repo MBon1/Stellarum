@@ -460,10 +460,6 @@ static void load_save(void* game, save_sys_t* save_sys)
 		return;
 	}
 
-	render_push_done(s_game->render);
-	render_push_done(s_game->render);
-	render_push_done(s_game->render);
-
 	remove_all_entities(s_game);
 
 	struct json_object_iterator it = json_object_iter_begin(jobj);
