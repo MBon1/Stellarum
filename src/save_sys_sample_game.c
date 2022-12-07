@@ -12,6 +12,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 
 #define RECT_HORIZONTAL_LEN 1.0f
@@ -99,13 +100,15 @@ typedef struct save_sys_sample_game_t
 static void load_resources(save_sys_sample_game_t* game);
 static void unload_resources(save_sys_sample_game_t* game);
 static void reset_player_position(transform_component_t* player_transform_comp);
-static void spawn_player(save_sys_sample_game_t* game, int index);
+static void spawn_player(save_sys_sample_game_t* game, int index, bool set_pos, float horizontal_pos, float vertical_pos);
 static void spawn_traffic(save_sys_sample_game_t* game, bool is_truck, bool move_right, int index, float horizontal_pos, float vertical_pos);
 static void spawn_marker(save_sys_sample_game_t* game, int index, transform_component_t* transform);
 static void spawn_camera(save_sys_sample_game_t* game);
 
 static void record_players(save_sys_sample_game_t* game, json_object* save_sys_jobj);
 static void record_traffic(save_sys_sample_game_t* game, json_object* save_sys_jobj);
+static void load_player(save_sys_sample_game_t* game, json_object* player_jobj);
+static void load_traffic(save_sys_sample_game_t* game, json_object* traffic_jobj);
 static void update_save(save_sys_sample_game_t* game);
 
 static void update_players(save_sys_sample_game_t* game);
@@ -125,7 +128,7 @@ save_sys_sample_game_t* save_sys_sample_game_create(heap_t* heap, fs_t* fs, wm_w
 	game->timer = timer_object_create(heap, NULL);
 	game->save_sys = save_sys_create(heap, fs);
 
-	game->ecs = ecs_create(heap);
+	game->ecs = ecs_create(game->heap);
 	game->transform_type = ecs_register_component_type(game->ecs, "transform", sizeof(transform_component_t), _Alignof(transform_component_t));
 	game->camera_type = ecs_register_component_type(game->ecs, "camera", sizeof(camera_component_t), _Alignof(camera_component_t));
 	game->model_type = ecs_register_component_type(game->ecs, "model", sizeof(model_component_t), _Alignof(model_component_t));
@@ -135,8 +138,8 @@ save_sys_sample_game_t* save_sys_sample_game_create(heap_t* heap, fs_t* fs, wm_w
 	game->marker_type = ecs_register_component_type(game->ecs, "marker", sizeof(marker_component_t), _Alignof(marker_component_t));
 
 	load_resources(game);
-	spawn_player(game, 0);
 	spawn_camera(game);
+	spawn_player(game, 0, false, 0, 0);
 	spawn_all_traffic(game);
 
 	return game;
@@ -157,7 +160,7 @@ void save_sys_sample_game_update(save_sys_sample_game_t* game)
 	ecs_update(game->ecs);
 
 	update_players(game);
-	//update_traffic(game);
+	update_traffic(game);
 	update_player_traffic_collision(game);
 
 	update_save(game);
@@ -278,7 +281,6 @@ static void unload_resources(save_sys_sample_game_t* game)
 
 
 /* ENTITY SPAWN FUNCTIONS */
-
 static void reset_player_position(transform_component_t* player_transform_comp)
 {
 	transform_identity(&player_transform_comp->transform);
@@ -286,7 +288,7 @@ static void reset_player_position(transform_component_t* player_transform_comp)
 	player_transform_comp->transform.translation.z = VERTICAL_CLAMP;
 }
 
-static void spawn_player(save_sys_sample_game_t* game, int index)
+static void spawn_player(save_sys_sample_game_t* game, int index, bool set_pos, float horizontal_pos, float vertical_pos)
 {
 	uint64_t k_player_ent_mask =
 		(1ULL << game->transform_type) |
@@ -296,7 +298,17 @@ static void spawn_player(save_sys_sample_game_t* game, int index)
 	game->player_ent = ecs_entity_add(game->ecs, k_player_ent_mask);
 
 	transform_component_t* transform_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->transform_type, true);
-	reset_player_position(transform_comp);
+
+	if (set_pos)
+	{
+		transform_identity(&transform_comp->transform);
+		transform_comp->transform.translation.y = horizontal_pos;
+		transform_comp->transform.translation.z = vertical_pos;
+	}
+	else
+	{
+		reset_player_position(transform_comp);
+	}
 
 	name_component_t* name_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->name_type, true);
 	strcpy_s(name_comp->name, sizeof(name_comp->name), "player");
@@ -320,6 +332,7 @@ static void spawn_marker(save_sys_sample_game_t* game, int index, transform_comp
 
 	transform_component_t* transform_comp = ecs_entity_get_component(game->ecs, game->marker_ent, game->transform_type, true);
 	transform_identity(&transform_comp->transform);
+	transform_comp->transform.translation.x = 1;
 	transform_comp->transform.translation.y = transform->transform.translation.y;
 	transform_comp->transform.translation.z = transform->transform.translation.z;
 
@@ -351,7 +364,7 @@ static void spawn_all_traffic(save_sys_sample_game_t* game)
 
 	for (int i = 0; i < 3; i++)
 	{
-		spawn_traffic(game, false, true, index, -HORIZONTAL_CLAMP + (CUBE_EDGE_LEN * 2) + (i * 12 * CUBE_EDGE_LEN), 3);
+		spawn_traffic(game, false, false, index, -HORIZONTAL_CLAMP + (CUBE_EDGE_LEN * 2) + (i * 12 * CUBE_EDGE_LEN), 3);
 		index++;
 	}
 }
@@ -415,10 +428,6 @@ static void spawn_camera(save_sys_sample_game_t* game)
 
 
 /* SAVE SYSTEM FUNCTIONS */
-
-#include <stdio.h>
-
-
 static void write_save(void* game, save_sys_t* save_sys)
 {
 	json_object* save_sys_jobj = save_sys_get_jobj(save_sys);
@@ -429,6 +438,18 @@ static void write_save(void* game, save_sys_t* save_sys)
 	record_traffic(s_game, save_sys_jobj);
 }
 
+static void remove_all_entities(save_sys_sample_game_t* game)
+{
+	uint64_t k_query_mask = (1ULL << game->transform_type);
+
+	for (ecs_query_t query = ecs_query_create(game->ecs, k_query_mask);
+		ecs_query_is_valid(game->ecs, &query);
+		ecs_query_next(game->ecs, &query))
+	{
+		ecs_entity_remove(game->ecs, ecs_query_get_entity(game->ecs, &query), false);
+	}
+}
+
 static void load_save(void* game, save_sys_t* save_sys)
 {
 	save_sys_sample_game_t* s_game = (save_sys_sample_game_t*)game;
@@ -436,21 +457,34 @@ static void load_save(void* game, save_sys_t* save_sys)
 	json_object* jobj = save_sys_get_jobj(save_sys);
 	if (jobj == NULL)
 	{
-		printf("INVALID SAVE\n");
 		return;
 	}
 
-	ecs_destroy(s_game->ecs);
-	s_game->ecs = ecs_create(s_game->heap);
+	render_push_done(s_game->render);
+	render_push_done(s_game->render);
+	render_push_done(s_game->render);
 
-	json_object* res = save_sys_get_component_jobj(save_sys, "fo2o");
-	if (res == NULL)
+	remove_all_entities(s_game);
+
+	struct json_object_iterator it = json_object_iter_begin(jobj);
+	struct json_object_iterator itEnd = json_object_iter_end(jobj);
+
+	while (!json_object_iter_equal(&it, &itEnd))
 	{
-		printf("\'foo1\' is an invalid key\n");
-	}
+		const char* curr_component = json_object_iter_peek_name(&it);
 
-	res = save_sys_get_component_jobj(save_sys, "foo");
-	printf("SAVE LOADED; \"foo\" = %d\n", json_object_get_int(res));
+		if (strstr(curr_component, "player"))
+		{
+			load_player(s_game, json_object_iter_peek_value(&it));
+		}
+
+		if (strstr(curr_component, "traffic"))
+		{
+			load_traffic(s_game, json_object_iter_peek_value(&it));
+		}
+
+		json_object_iter_next(&it);
+	}
 }
 
 static void update_save(save_sys_sample_game_t* game)
@@ -458,6 +492,7 @@ static void update_save(save_sys_sample_game_t* game)
 	save_sys_update(game, game->save_sys, game->window, write_save, load_save);
 }
 
+// Record Save Data Functions
 static json_object* record_transform_component(transform_component_t* transform_comp)
 {
 	json_object* transform_array = json_object_new_array();
@@ -526,7 +561,7 @@ static void record_players(save_sys_sample_game_t* game, json_object* save_sys_j
 
 static void record_traffic(save_sys_sample_game_t* game, json_object* save_sys_jobj)
 {
-	uint64_t k_query_mask = (1ULL << game->transform_type);
+	uint64_t k_query_mask = (1ULL << game->transform_type) | (1ULL << game->traffic_type);
 
 	char* traffic_str = "traffic";
 	size_t traffic_name_len = strlen(traffic_str) + MAX_DIGITS_INT;
@@ -551,9 +586,59 @@ static void record_traffic(save_sys_sample_game_t* game, json_object* save_sys_j
 	heap_free(game->heap, traffic_name);
 }
 
+// Load Save Data Functions
+static void load_player(save_sys_sample_game_t* game, json_object* player_jobj)
+{
+	json_object* field = json_object_object_get(player_jobj, "player");
+	json_object* value = json_object_object_get(field, "index");
+	int index = json_object_get_int(value);
+	
+	value = json_object_object_get(player_jobj, "transform");
+
+	spawn_player(game, 0, true, 
+		(float)json_object_get_double(json_object_array_get_idx(value, 1)), 
+		(float)json_object_get_double(json_object_array_get_idx(value, 2)));
+
+	if (field != NULL)
+	{
+		json_object_put(field);
+	}
+
+	if (value != NULL)
+	{
+		json_object_put(value);
+	}
+}
+
+static void load_traffic(save_sys_sample_game_t* game, json_object* traffic_jobj)
+{
+	json_object* field = json_object_object_get(traffic_jobj, "traffic");
+	json_object* value = json_object_object_get(field, "index");
+	int index = json_object_get_int(value);
+	value = json_object_object_get(field, "is_truck");
+	bool is_truck = (bool)json_object_get_int(value);
+	value = json_object_object_get(field, "move_right");
+	bool move_right = (bool)json_object_get_int(value);
+
+	value = json_object_object_get(traffic_jobj, "transform");
+	float horizontal_pos = (float)json_object_get_double(json_object_array_get_idx(value, 1));
+	float vertical_pos = (float)json_object_get_double(json_object_array_get_idx(value, 2));
+
+	spawn_traffic(game, is_truck, move_right, index, horizontal_pos, vertical_pos);
+
+	if (field != NULL)
+	{
+		json_object_put(field);
+	}
+
+	if (value != NULL)
+	{
+		json_object_put(value);
+	}
+}
+
 
 /* UPDATE FUNCTIONS */
-
 static void update_players(save_sys_sample_game_t* game)
 {
 	float dt = (float)timer_object_get_delta_ms(game->timer) * 0.0075f;
@@ -622,6 +707,10 @@ static void update_traffic(save_sys_sample_game_t* game)
 		transform_component_t* transform_comp = ecs_query_get_component(game->ecs, &query, game->transform_type);
 		traffic_component_t* traffic_comp = ecs_query_get_component(game->ecs, &query, game->traffic_type);
 
+		if (traffic_comp->is_truck)
+		{
+			continue;
+		}
 		transform_t move;
 		transform_identity(&move);
 		if (traffic_comp->move_right)
@@ -635,15 +724,7 @@ static void update_traffic(save_sys_sample_game_t* game)
 		transform_multiply(&transform_comp->transform, &move);
 
 		// Clamp Traffic Position
-		float rect_horizontal_clamp = HORIZONTAL_CLAMP;
-		if (traffic_comp->is_truck)
-		{
-			rect_horizontal_clamp += RECT_HORIZONTAL_LEN * 1.5f;
-		}
-		else
-		{
-			rect_horizontal_clamp += CUBE_EDGE_LEN * 1.5f;
-		}
+		float rect_horizontal_clamp = HORIZONTAL_CLAMP + CUBE_EDGE_LEN * 1.5f;
 
 		if (transform_comp->transform.translation.y > rect_horizontal_clamp)
 		{

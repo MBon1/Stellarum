@@ -34,6 +34,7 @@ save_sys_t* save_sys_create(heap_t* heap, fs_t* fs)
 
 void save_sys_destroy(save_sys_t* save_sys)
 {
+	json_object_put(save_sys->jobj);
 	heap_free(save_sys->heap, save_sys);
 }
 
@@ -87,6 +88,11 @@ void save_sys_read_save(save_sys_t* save_sys, unsigned int save_id)
 	if (fs_work_get_buffer(work) != NULL)
 	{
 		save_sys->jobj = json_tokener_parse((char*)(fs_work_get_buffer(work)));
+	}
+	else
+	{
+		json_object_put(save_sys->jobj);
+		save_sys->jobj = NULL;
 	}
 	fs_work_and_buffer_destroy(work);
 	heap_free(save_sys->heap, file_name);
@@ -163,13 +169,11 @@ void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window,
 	{
 		if (key_mask & k_key_ctrl)
 		{
-			printf("Loading save file %d\n", save_file_id);
 			save_sys_read_save(save_sys, (unsigned int)(save_file_id));
 			game_load_save(game, save_sys);
 		}
 		else if (key_mask & k_key_delete)
 		{
-			printf("Deleting save file %d\n", save_file_id);
 			save_sys_delete_save(save_sys, (unsigned int)(save_file_id));
 		}
 		else
@@ -177,7 +181,6 @@ void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window,
 			save_sys->jobj = json_object_new_object();
 			game_write_save(game, save_sys);
 			const char* save_file_content = save_sys_get_jobj_string(save_sys);
-			printf("Saving to save file %d\n%s\n", save_file_id, save_file_content);
 			save_sys_write_save(save_sys, (unsigned int)(save_file_id), save_file_content);
 		}
 	}

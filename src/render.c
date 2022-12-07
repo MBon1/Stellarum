@@ -157,7 +157,7 @@ static int render_thread_func(void* user)
 			last_pipeline = NULL;
 			last_mesh = NULL;
 
-			destroy_stale_data(render);
+			//destroy_stale_data(render);
 			++render->frame_counter;
 			frame_index = render->frame_counter % render->gpu_frame_count;
 		}
