@@ -53,7 +53,6 @@ json_object* save_sys_get_component_jobj(save_sys_t* save_sys, const char* field
 	return json_object_object_get(save_sys_get_jobj(save_sys), field);
 }
 
-
 static char* save_sys_get_file_name(save_sys_t* save_sys, unsigned int save_id)
 {
 	char* file_name = heap_alloc(save_sys->heap, SAVE_FILE_NAME_LEN, 8);
@@ -70,7 +69,6 @@ int save_sys_write_save(save_sys_t* save_sys, unsigned int save_id, const char* 
 	}
 	save_sys->jobj = jobj;
 	char* file_name = save_sys_get_file_name(save_sys, save_id);
-	//fs_write_clear(save_sys->fs, file_name, save_data, strlen(save_data), false, true);
 	fs_work_t* work = fs_write(save_sys->fs, file_name, save_data, strlen(save_data), false);
 	fs_work_wait(work);
 	fs_work_destroy(work);
