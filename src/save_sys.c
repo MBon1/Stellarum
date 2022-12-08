@@ -38,7 +38,6 @@ void save_sys_destroy(save_sys_t* save_sys)
 	heap_free(save_sys->heap, save_sys);
 }
 
-
 json_object* save_sys_get_jobj(save_sys_t* save_sys)
 {
 	return save_sys->jobj;
@@ -106,7 +105,6 @@ void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id)
 	fs_work_destroy(work);
 	heap_free(save_sys->heap, file_name);
 }
-
 
 void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window, 
 	void (*game_write_save)(void* game, save_sys_t* save_sys), 
