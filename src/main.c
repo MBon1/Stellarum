@@ -6,11 +6,6 @@
 #include "timer.h"
 #include "wm.h"
 
-#include "json_test.h"
-#include "save_sys.h"
-
-void save_sys_test(heap_t* heap, fs_t* fs);
-
 int main(int argc, const char* argv[])
 {
 	debug_set_print_mask(k_print_info | k_print_warning | k_print_error);
@@ -22,9 +17,6 @@ int main(int argc, const char* argv[])
 	fs_t* fs = fs_create(heap, 8);
 	wm_window_t* window = wm_create(heap);
 	render_t* render = render_create(heap, window);
-
-	// SAVE SYS TEST
-	//save_sys_test(heap, fs);
 
 	save_sys_sample_game_t* game = save_sys_sample_game_create(heap, fs, window, render);
 

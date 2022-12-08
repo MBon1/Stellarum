@@ -159,7 +159,6 @@
     <ClCompile Include="fs.c" />
     <ClCompile Include="gpu.c" />
     <ClCompile Include="heap.c" />
-    <ClCompile Include="json_test.c" />
     <ClCompile Include="lecture7.c" />
     <ClCompile Include="lz4\lz4.c" />
     <ClCompile Include="main.c" />
@@ -219,7 +218,6 @@
     <ClInclude Include="json-c\strerror_override.h" />
     <ClInclude Include="json-c\strerror_override_private.h" />
     <ClInclude Include="json-c\vasprintf_compat.h" />
-    <ClInclude Include="json_test.h" />
     <ClInclude Include="save_sys.h" />
     <ClInclude Include="save_sys_sample_game.h" />
     <ClInclude Include="stack.h" />
