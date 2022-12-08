@@ -27,6 +27,7 @@ typedef enum fs_work_op_t
 {
 	k_fs_work_op_read,
 	k_fs_work_op_write,
+	k_fs_work_op_delete,
 } fs_work_op_t;
 
 typedef struct fs_work_t
@@ -144,6 +145,28 @@ fs_work_t* fs_write_clear(fs_t* fs, const char* path, const void* buffer, size_t
 	return work;
 }
 
+fs_work_t* fs_delete(fs_t* fs, const char* path)
+{
+	fs_work_t* work = heap_alloc(fs->heap, sizeof(fs_work_t), 8);
+	work->heap = fs->heap;
+	work->op = k_fs_work_op_delete;
+	strcpy_s(work->path, sizeof(work->path), path);
+	work->buffer = NULL;
+	work->tmp_buffer = NULL;
+	work->size = 0;
+	work->tmp_size = 0;
+	work->done = event_create();
+	work->result = 0;
+	work->null_terminate = false;
+	work->use_compression = false;
+	work->destroy_on_completion = FALSE;
+	work->clear_file = FALSE;
+
+	queue_push(fs->file_queue, work);
+
+	return work;
+}
+
 bool fs_work_is_done(fs_work_t* work)
 {
 	return work ? event_is_raised(work->done) : true;
@@ -180,6 +203,17 @@ void fs_work_destroy(fs_work_t* work)
 	if (work)
 	{
 		event_wait(work->done);
+		event_destroy(work->done);
+		heap_free(work->heap, work);
+	}
+}
+
+void fs_work_and_buffer_destroy(fs_work_t* work)
+{
+	if (work)
+	{
+		event_wait(work->done);
+		heap_free(work->heap, work->buffer);
 		event_destroy(work->done);
 		heap_free(work->heap, work);
 	}
@@ -391,6 +425,26 @@ static void file_compress_write(fs_t* fs, fs_work_t* work)
 	queue_push(fs->file_queue, work);
 }
 
+static void file_delete(fs_work_t* work)
+{
+	wchar_t wide_path[1024];
+	if (MultiByteToWideChar(CP_UTF8, 0, work->path, -1, wide_path, sizeof(wide_path)) <= 0)
+	{
+		work->result = -1;
+		event_signal(work->done);
+		return;
+	}
+
+	if (!DeleteFile(wide_path))
+	{
+		work->result = GetLastError();
+		event_signal(work->done);
+		return;
+	}
+
+	event_signal(work->done);
+}
+
 static int file_thread_func(void* user)
 {
 	fs_t* fs = user;
@@ -409,6 +463,9 @@ static int file_thread_func(void* user)
 			break;
 		case k_fs_work_op_write:
 			file_write(work);
+			break;
+		case k_fs_work_op_delete:
+			file_delete(work);
 			break;
 		}
 	}

@@ -121,8 +121,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Dbghelp.lib;winmm.lib;bcrypt.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>vulkan</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Dbghelp.lib;winmm.lib;bcrypt.lib;vulkan-1.lib;json-c-static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vulkan;json-c</AdditionalLibraryDirectories>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -163,6 +163,8 @@
     <ClCompile Include="lecture7.c" />
     <ClCompile Include="lz4\lz4.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="save_sys.c" />
+    <ClCompile Include="save_sys_sample_game.c" />
     <ClCompile Include="stack.c" />
     <ClCompile Include="stack_trace.c" />
     <ClCompile Include="mat4f.c" />
@@ -193,6 +195,33 @@
     <ClInclude Include="fs.h" />
     <ClInclude Include="gpu.h" />
     <ClInclude Include="heap.h" />
+    <ClInclude Include="json-c\arraylist.h" />
+    <ClInclude Include="json-c\config.h" />
+    <ClInclude Include="json-c\debug.h" />
+    <ClInclude Include="json-c\json.h" />
+    <ClInclude Include="json-c\json_config.h" />
+    <ClInclude Include="json-c\json_c_version.h" />
+    <ClInclude Include="json-c\json_inttypes.h" />
+    <ClInclude Include="json-c\json_object.h" />
+    <ClInclude Include="json-c\json_object_iterator.h" />
+    <ClInclude Include="json-c\json_object_private.h" />
+    <ClInclude Include="json-c\json_pointer.h" />
+    <ClInclude Include="json-c\json_tokener.h" />
+    <ClInclude Include="json-c\json_types.h" />
+    <ClInclude Include="json-c\json_util.h" />
+    <ClInclude Include="json-c\json_visit.h" />
+    <ClInclude Include="json-c\linkhash.h" />
+    <ClInclude Include="json-c\math_compat.h" />
+    <ClInclude Include="json-c\parse_flags.h" />
+    <ClInclude Include="json-c\printbuf.h" />
+    <ClInclude Include="json-c\random_seed.h" />
+    <ClInclude Include="json-c\snprintf_compat.h" />
+    <ClInclude Include="json-c\strdup_compat.h" />
+    <ClInclude Include="json-c\strerror_override.h" />
+    <ClInclude Include="json-c\strerror_override_private.h" />
+    <ClInclude Include="json-c\vasprintf_compat.h" />
+    <ClInclude Include="save_sys.h" />
+    <ClInclude Include="save_sys_sample_game.h" />
     <ClInclude Include="stack.h" />
     <ClInclude Include="stack_trace.h" />
     <ClInclude Include="lz4\lz4.h" />
