@@ -29,7 +29,7 @@ json_object* save_sys_get_jobj(save_sys_t* save_sys);
 const char* save_sys_get_jobj_string(save_sys_t* save_sys);
 
 // Returns a json object containing a field in the save system's json object.
-// Gets the requested field from the json object containined in the provided
+// Gets the requested field from the json object in the provided
 // save system as a json object.
 // The value of the field can be retrieved through a json-c get function 
 // (i.e. json_object_get_int()).
@@ -52,7 +52,7 @@ void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id);
 
 // Performs the corresponding save system operation (write save, load save, or delete save)
 // based on the keys pressed in the game window's key mask.
-// The specific write and load save operations that handle the game's entitites 
+// The specific write and load save operations that handle the game's entities 
 // are provided with the corresponding operations.
 // The file that corresponds to the operation is determined by the numeric key (0-9) pressed.
 // An operation will only occur on the first frame a new numeric key is pressed
