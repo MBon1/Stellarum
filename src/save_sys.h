@@ -61,7 +61,9 @@ void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id);
 //  * Deleting a filed occurs when both a [numeric key] and [delete] are pressed.
 // Note: game_write_save() must append data to be saved to jobj using json-c's
 //		 json object add functions (i.e. json_object_array_add()).
-void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window, void (*game_write_save)(void* game, save_sys_t* save_sys), void (*game_load_save)(void* game, save_sys_t* save_sys));
+void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window, 
+	void (*game_write_save)(void* game, save_sys_t* save_sys), 
+	void (*game_load_save)(void* game, save_sys_t* save_sys));
 
 // Parses the given string, returning the resulting json_object.
 // Returns NULL if string cannot be parsed (i.e. invalid json format).

@@ -108,7 +108,9 @@ void save_sys_delete_save(save_sys_t* save_sys, unsigned int save_id)
 }
 
 
-void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window, void (*game_write_save)(void* game, save_sys_t* save_sys), void (*game_load_save)(void* game, save_sys_t* save_sys))
+void save_sys_update(void* game, save_sys_t* save_sys, wm_window_t* game_window, 
+	void (*game_write_save)(void* game, save_sys_t* save_sys), 
+	void (*game_load_save)(void* game, save_sys_t* save_sys))
 {
 	uint32_t key_mask = wm_get_key_mask(game_window);
 	int last_save_file_id = save_sys->last_file_id;
